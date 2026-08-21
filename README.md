@@ -1,36 +1,25 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GitStreak 🚀
 
-## Getting Started
+GitStreak is a sleek, ultra-fast Chrome extension and Next.js API that tracks your GitHub commit streaks directly from your browser. Keep your momentum going and never miss a day again!
 
-First, run the development server:
+## 🌟 Features
+- **Real-Time Tracking:** Instantly pulls your GitHub contribution graph data using the GraphQL API.
+- **Lightning Fast UI:** Uses optimistic UI caching and local storage for 0ms load times.
+- **Smart Notifications:** An intelligent background worker monitors your streak and sends a native desktop notification at 8:00 PM if you haven't pushed code yet.
+- **Dynamic Action Banner:** An animated dashboard in the popup dynamically tracks exactly how many hours you have left until your streak resets.
+- **GitHub Native Theme:** Seamlessly clones GitHub's dark mode aesthetic, including a perfectly matching 365-day HTML/CSS native contribution heatmap.
+- **Shareable Markdown:** Generates a dynamic SVG badge of your streak that you can instantly copy into your `README.md` with 1 click.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🛠️ Architecture
+GitStreak is divided into two parts:
+1. **The API (`/src/app/api/streak`)**: A Next.js serverless route that queries the GitHub GraphQL API, processes the rolling 365-day window, and serves both raw JSON arrays (for the extension) and a beautifully formatted SVG badge (for Markdown embeds).
+2. **The Extension (`/extension`)**: A lightweight Chrome Extension built with pure vanilla JS (Manifest V3).
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🚀 Installation (Local Development)
+1. Clone this repository.
+2. In the root directory, create a `.env` file and add your GitHub Personal Access Token: `GITHUB_TOKEN=your_token_here`
+3. Run `npm install` and `npm run dev` to start the Next.js API on port 3000.
+4. Open Google Chrome and navigate to `chrome://extensions`.
+5. Enable **Developer mode** in the top right corner.
+6. Click **Load unpacked** and select the `/extension` folder from this repository.
+7. Click the GitStreak icon in your browser, enter your GitHub username, and you're good to go!
