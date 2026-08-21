@@ -75,13 +75,13 @@ document.addEventListener('DOMContentLoaded', () => {
             banner.classList.remove('hidden');
             
             if (store.hasCommittedToday === false) {
-                banner.style.background = 'rgba(218, 54, 51, 0.15)';
-                banner.style.border = '1px solid rgba(218, 54, 51, 0.5)';
-                banner.style.color = '#ffbaba';
+                banner.style.background = 'transparent';
+                banner.style.border = 'none';
+                banner.style.color = '#da3633';
                 banner.textContent = '🔥 Your streak is at risk! You haven\'t pushed any code today.';
             } else {
-                banner.style.background = 'rgba(57, 211, 83, 0.15)';
-                banner.style.border = '1px solid rgba(57, 211, 83, 0.5)';
+                banner.style.background = 'transparent';
+                banner.style.border = 'none';
                 banner.style.color = '#39d353';
                 banner.textContent = '✅ You are done for today! Your streak is safely growing.';
             }
