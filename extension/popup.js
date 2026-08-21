@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     settingsBtn.addEventListener('click', () => {
-        chrome.storage.local.remove(['githubUsername'], () => {
+        chrome.storage.local.remove(['githubUsername', 'cachedSvgUrl'], () => {
             showSetupScreen();
         });
     });
@@ -43,20 +43,53 @@ document.addEventListener('DOMContentLoaded', () => {
         setupScreen.classList.add('hidden');
         statsScreen.classList.remove('hidden');
         
-        loading.classList.remove('hidden');
-        streakImg.classList.add('hidden');
+        // 1. Try to load cached SVG immediately
+        chrome.storage.local.get(['cachedSvgUrl'], (result) => {
+            if (result.cachedSvgUrl) {
+                streakImg.src = result.cachedSvgUrl;
+                loading.classList.add('hidden');
+                streakImg.classList.remove('hidden');
+            } else {
+                loading.textContent = 'Generating stats...';
+                loading.classList.remove('hidden');
+                streakImg.classList.add('hidden');
+            }
+        });
         
-        // Cache bust so it always loads fresh when the popup opens
+        // 2. Fetch fresh SVG in the background
         const ts = new Date().getTime();
-        streakImg.src = `${API_BASE}?user=${username}&t=${ts}`;
+        const freshUrl = `${API_BASE}?user=${username}&t=${ts}`;
         
-        streakImg.onload = () => {
+        // Create an invisible image to load the fresh SVG in the background
+        const preloadImg = new Image();
+        preloadImg.onload = () => {
+            // Once fully loaded, swap it into the UI
+            streakImg.src = preloadImg.src;
             loading.classList.add('hidden');
             streakImg.classList.remove('hidden');
+            
+            // Save the URL to cache for next time
+            // We use the same freshUrl but convert it to a data URI to cache it perfectly,
+            // or we just save the freshUrl (but Chrome will have it in browser cache).
+            // Actually, we can fetch it as text to save the exact SVG string, but saving the data URL is easiest.
+            fetch(freshUrl)
+                .then(r => r.blob())
+                .then(blob => {
+                    const reader = new FileReader();
+                    reader.onload = () => chrome.storage.local.set({ cachedSvgUrl: reader.result });
+                    reader.readAsDataURL(blob);
+                });
         };
         
-        streakImg.onerror = () => {
-            loading.textContent = 'Failed to load streak stats. Is the server running?';
+        preloadImg.onerror = () => {
+            console.error('Failed to load fresh SVG in background.');
+            chrome.storage.local.get(['cachedSvgUrl'], (result) => {
+                if (!result.cachedSvgUrl) {
+                    loading.textContent = 'Failed to load streak stats. Is the server running?';
+                }
+            });
         };
+        
+        preloadImg.src = freshUrl;
     }
 });
