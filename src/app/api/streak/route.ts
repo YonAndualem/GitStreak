@@ -1,16 +1,19 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
 async function fetchAllTimeContributions(username: string) {
   const userRes = await fetch('https://api.github.com/graphql', {
     method: 'POST',
+    cache: 'no-store',
     headers: {
       Authorization: `bearer ${GITHUB_TOKEN}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      query: `query($login: String!) { user(login: $login) { createdAt } }`,
+      query: `query($login: String!) { # ${Math.random()}\n user(login: $login) { createdAt } }`,
       variables: { login: username },
     }),
   });
@@ -26,8 +29,13 @@ async function fetchAllTimeContributions(username: string) {
   for (let year = startYear; year <= currentYear; year++) {
     const from = `${year}-01-01T00:00:00Z`;
     const to = `${year}-12-31T23:59:59Z`;
+    
+    // For the current year, omit from/to to force GitHub to return real-time data
+    // (GitHub heavily caches explicit year queries, causing today's commits to sometimes show as 0)
+    const collectionArgs = year === currentYear ? '' : `(from: "${from}", to: "${to}")`;
+
     queryParts.push(`
-      year${year}: contributionsCollection(from: "${from}", to: "${to}") {
+      year${year}: contributionsCollection${collectionArgs} {
         contributionCalendar {
           totalContributions
           weeks {
@@ -42,7 +50,7 @@ async function fetchAllTimeContributions(username: string) {
   }
 
   const fullQuery = `
-    query($login: String!) {
+    query($login: String!) { # cache-buster: ${Math.random()}
       user(login: $login) {
         ${queryParts.join('\n')}
       }
@@ -51,6 +59,7 @@ async function fetchAllTimeContributions(username: string) {
 
   const response = await fetch('https://api.github.com/graphql', {
     method: 'POST',
+    cache: 'no-store',
     headers: {
       Authorization: `bearer ${GITHUB_TOKEN}`,
       'Content-Type': 'application/json',
@@ -71,7 +80,17 @@ async function fetchAllTimeContributions(username: string) {
     allDays.push(...days);
   }
 
-  return { allDays, allTotal, createdAt };
+  // Deduplicate allDays because GitHub returns overlapping days at year boundaries
+  const uniqueDaysMap = new Map();
+  for (const day of allDays) {
+    if (!uniqueDaysMap.has(day.date) || uniqueDaysMap.get(day.date).contributionCount < day.contributionCount) {
+      uniqueDaysMap.set(day.date, day);
+    }
+  }
+  const uniqueDays = Array.from(uniqueDaysMap.values());
+  uniqueDays.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  return { allDays: uniqueDays, allTotal, createdAt };
 }
 
 function calculateStreaks(allDays: any[], allTotal: number) {
@@ -93,7 +112,14 @@ function calculateStreaks(allDays: any[], allTotal: number) {
   let today = new Date().toISOString().split('T')[0];
   let todayIndex = allDays.findIndex((d: any) => d.date === today);
   
+  console.log('DEBUG:', { today, todayIndex, dayData: allDays[todayIndex] });
+
+  let hasCommittedToday = false;
   if (todayIndex !== -1) {
+    if (allDays[todayIndex].contributionCount > 0) {
+      hasCommittedToday = true;
+    }
+    
     let activeIndex = todayIndex;
     if (allDays[todayIndex].contributionCount === 0) {
       activeIndex = todayIndex - 1;
@@ -105,7 +131,7 @@ function calculateStreaks(allDays: any[], allTotal: number) {
     }
   }
 
-  return { totalContributions: allTotal, currentStreak, longestStreak };
+  return { totalContributions: allTotal, currentStreak, longestStreak, hasCommittedToday };
 }
 
 function generateSvg(stats: any, username: string, allDays: any[], createdAt: Date) {
@@ -114,10 +140,16 @@ function generateSvg(stats: any, username: string, allDays: any[], createdAt: Da
   const formatDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   const formatDateLong = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-  // Find the start of the current streak
-  let streakStart = today;
+  const accentColor = stats.currentStreak > 0 ? '#39d353' : '#da3633';
+
+  // Find the end and start of the current streak
+  let streakEnd = new Date(today);
+  if (!stats.hasCommittedToday && stats.currentStreak > 0) {
+    streakEnd.setDate(streakEnd.getDate() - 1);
+  }
+
+  let streakStart = new Date(streakEnd);
   if (stats.currentStreak > 0) {
-    streakStart = new Date(today);
     streakStart.setDate(streakStart.getDate() - stats.currentStreak + 1);
   }
 
@@ -158,7 +190,7 @@ function generateSvg(stats: any, username: string, allDays: any[], createdAt: Da
     </style>
     <defs>
       <clipPath id='outer_rectangle'>
-        <rect width='495' height='195' rx='4.5'/>
+        <rect width='495' height='195' rx='12'/>
       </clipPath>
       <mask id='mask_out_ring_behind_fire'>
         <rect width='495' height='195' fill='white'/>
@@ -167,7 +199,7 @@ function generateSvg(stats: any, username: string, allDays: any[], createdAt: Da
     </defs>
     <g clip-path='url(#outer_rectangle)'>
       <g style='isolation: isolate'>
-        <rect stroke='#E4E2E2' fill='#151515' rx='4.5' x='0.5' y='0.5' width='494' height='194'/>
+        <rect stroke='#E4E2E2' fill='#151515' rx='12' x='0.5' y='0.5' width='494' height='194'/>
       </g>
       <g style='isolation: isolate'>
         <line x1='165' y1='28' x2='165' y2='170' vector-effect='non-scaling-stroke' stroke-width='1' stroke='#E4E2E2' stroke-linejoin='miter' stroke-linecap='square' stroke-miterlimit='3'/>
@@ -196,24 +228,24 @@ function generateSvg(stats: any, username: string, allDays: any[], createdAt: Da
       <g style='isolation: isolate'>
         <!-- Current Streak label -->
         <g transform='translate(247.5, 108)'>
-          <text x='0' y='32' stroke-width='0' text-anchor='middle' fill='#FB8C00' stroke='none' font-family='"Segoe UI", Ubuntu, sans-serif' font-weight='700' font-size='14px' font-style='normal' style='opacity: 0; animation: fadein 0.5s linear forwards 0.9s'>
+          <text x='0' y='32' stroke-width='0' text-anchor='middle' fill='${accentColor}' stroke='none' font-family='"Segoe UI", Ubuntu, sans-serif' font-weight='700' font-size='14px' font-style='normal' style='opacity: 0; animation: fadein 0.5s linear forwards 0.9s'>
             Current Streak
           </text>
         </g>
         <!-- Current Streak range -->
         <g transform='translate(247.5, 145)'>
           <text x='0' y='21' stroke-width='0' text-anchor='middle' fill='#9E9E9E' stroke='none' font-family='"Segoe UI", Ubuntu, sans-serif' font-weight='400' font-size='12px' font-style='normal' style='opacity: 0; animation: fadein 0.5s linear forwards 0.9s'>
-            ${stats.currentStreak > 0 ? formatDate(streakStart) + ' - ' + formatDate(today) : 'No active streak'}
+            ${stats.currentStreak > 0 ? formatDate(streakStart) + ' - ' + formatDate(streakEnd) : 'No active streak'}
           </text>
         </g>
         <!-- Ring around number -->
         <g mask='url(#mask_out_ring_behind_fire)'>
-          <circle cx='247.5' cy='71' r='40' fill='none' stroke='#FB8C00' stroke-width='5' style='opacity: 0; animation: fadein 0.5s linear forwards 0.4s'></circle>
+          <circle cx='247.5' cy='71' r='40' fill='none' stroke='${accentColor}' stroke-width='5' style='opacity: 0; animation: fadein 0.5s linear forwards 0.4s'></circle>
         </g>
         <!-- Fire icon -->
         <g transform='translate(247.5, 19.5)' stroke-opacity='0' style='opacity: 0; animation: fadein 0.5s linear forwards 0.6s'>
           <path d='M -12 -0.5 L 15 -0.5 L 15 23.5 L -12 23.5 L -12 -0.5 Z' fill='none'/>
-          <path d='M 1.5 0.67 C 1.5 0.67 2.24 3.32 2.24 5.47 C 2.24 7.53 0.89 9.2 -1.17 9.2 C -3.23 9.2 -4.79 7.53 -4.79 5.47 L -4.76 5.11 C -6.78 7.51 -8 10.62 -8 13.99 C -8 18.41 -4.42 22 0 22 C 4.42 22 8 18.41 8 13.99 C 8 8.6 5.41 3.79 1.5 0.67 Z M -0.29 19 C -2.07 19 -3.51 17.6 -3.51 15.86 C -3.51 14.24 -2.46 13.1 -0.7 12.74 C 1.07 12.38 2.9 11.53 3.92 10.16 C 4.31 11.45 4.51 12.81 4.51 14.2 C 4.51 16.85 2.36 19 -0.29 19 Z' fill='#FB8C00' stroke-opacity='0'/>
+          <path d='M 1.5 0.67 C 1.5 0.67 2.24 3.32 2.24 5.47 C 2.24 7.53 0.89 9.2 -1.17 9.2 C -3.23 9.2 -4.79 7.53 -4.79 5.47 L -4.76 5.11 C -6.78 7.51 -8 10.62 -8 13.99 C -8 18.41 -4.42 22 0 22 C 4.42 22 8 18.41 8 13.99 C 8 8.6 5.41 3.79 1.5 0.67 Z M -0.29 19 C -2.07 19 -3.51 17.6 -3.51 15.86 C -3.51 14.24 -2.46 13.1 -0.7 12.74 C 1.07 12.38 2.9 11.53 3.92 10.16 C 4.31 11.45 4.51 12.81 4.51 14.2 C 4.51 16.85 2.36 19 -0.29 19 Z' fill='${accentColor}' stroke-opacity='0'/>
         </g>
         <!-- Current Streak big number -->
         <g transform='translate(247.5, 48)'>
@@ -242,6 +274,11 @@ function generateSvg(stats: any, username: string, allDays: any[], createdAt: Da
           </text>
         </g>
       </g>
+      <!-- Watermark -->
+      <g transform='translate(405, 172)'>
+        <path d='M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z' fill='#8b949e'/>
+        <text x='20' y='12' stroke-width='0' fill='#8b949e' font-family='"Segoe UI", Ubuntu, sans-serif' font-weight='600' font-size='10px'>GitStreak</text>
+      </g>
     </g>
   </svg>`;
 }
@@ -249,6 +286,7 @@ function generateSvg(stats: any, username: string, allDays: any[], createdAt: Da
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const username = searchParams.get('user');
+  const format = searchParams.get('format') || 'svg';
 
   if (!username) {
     return new NextResponse('Missing user parameter', { status: 400 });
@@ -257,6 +295,22 @@ export async function GET(request: Request) {
   try {
     const { allDays, allTotal, createdAt } = await fetchAllTimeContributions(username);
     const stats = calculateStreaks(allDays, allTotal);
+
+    if (format === 'json') {
+      const last365 = allDays.slice(-365);
+      
+      return NextResponse.json({
+        username,
+        stats,
+        accountStart: createdAt,
+        heatmapDays: last365
+      }, {
+        headers: {
+          'Access-Control-Allow-Origin': '*', // Allow extension to fetch this
+        }
+      });
+    }
+
     const svg = generateSvg(stats, username, allDays, createdAt);
 
     return new NextResponse(svg, {
