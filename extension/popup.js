@@ -167,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const markdown = `[![GitHub Streak](${url})](${url})`;
             navigator.clipboard.writeText(markdown).then(() => {
                 const old = copyBtn.textContent;
-                copyBtn.textContent = '✅ Copied!';
+                copyBtn.textContent = '✓ Copied!';
                 setTimeout(() => copyBtn.textContent = old, 2000);
             });
         };
