@@ -78,7 +78,9 @@ async function fetchAllTimeContributions(username: string) {
   // Deduplicate allDays because GitHub returns overlapping days at year boundaries
   const uniqueDaysMap = new Map();
   for (const day of allDays) {
-    uniqueDaysMap.set(day.date, day);
+    if (!uniqueDaysMap.has(day.date) || uniqueDaysMap.get(day.date).contributionCount < day.contributionCount) {
+      uniqueDaysMap.set(day.date, day);
+    }
   }
   const uniqueDays = Array.from(uniqueDaysMap.values());
   uniqueDays.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
