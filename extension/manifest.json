@@ -4,7 +4,10 @@
   "version": "1.0.0",
   "description": "Track your GitHub contribution streak in real-time.",
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "128": "icons/icon128.png"
+    }
   },
   "permissions": [
     "storage",
@@ -17,5 +20,8 @@
   ],
   "background": {
     "service_worker": "background.js"
+  },
+  "icons": {
+    "128": "icons/icon128.png"
   }
 }
