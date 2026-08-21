@@ -65,8 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'cachedSvgUrl', 
             'cachedHeatmapDays', 
             'hasCommittedToday', 
-            'streakActive',
-            'lastNotificationDate'
+            'streakActive'
         ], () => {
             showSetupScreen();
         });
