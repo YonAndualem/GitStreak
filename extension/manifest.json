@@ -15,7 +15,7 @@
     "notifications"
   ],
   "host_permissions": [
-    "http://localhost:3000/*",
+    "https://git-streak-phi.vercel.app/*",
     "https://*.github.com/*"
   ],
   "background": {
