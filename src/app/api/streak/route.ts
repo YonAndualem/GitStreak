@@ -133,10 +133,14 @@ function generateSvg(stats: any, username: string, allDays: any[], createdAt: Da
   const formatDate = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   const formatDateLong = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-  // Find the start of the current streak
-  let streakStart = today;
+  // Find the end and start of the current streak
+  let streakEnd = new Date(today);
+  if (!stats.hasCommittedToday && stats.currentStreak > 0) {
+    streakEnd.setDate(streakEnd.getDate() - 1);
+  }
+
+  let streakStart = new Date(streakEnd);
   if (stats.currentStreak > 0) {
-    streakStart = new Date(today);
     streakStart.setDate(streakStart.getDate() - stats.currentStreak + 1);
   }
 
@@ -222,7 +226,7 @@ function generateSvg(stats: any, username: string, allDays: any[], createdAt: Da
         <!-- Current Streak range -->
         <g transform='translate(247.5, 145)'>
           <text x='0' y='21' stroke-width='0' text-anchor='middle' fill='#9E9E9E' stroke='none' font-family='"Segoe UI", Ubuntu, sans-serif' font-weight='400' font-size='12px' font-style='normal' style='opacity: 0; animation: fadein 0.5s linear forwards 0.9s'>
-            ${stats.currentStreak > 0 ? formatDate(streakStart) + ' - ' + formatDate(today) : 'No active streak'}
+            ${stats.currentStreak > 0 ? formatDate(streakStart) + ' - ' + formatDate(streakEnd) : 'No active streak'}
           </text>
         </g>
         <!-- Ring around number -->
