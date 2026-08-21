@@ -1,16 +1,19 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
 async function fetchAllTimeContributions(username: string) {
   const userRes = await fetch('https://api.github.com/graphql', {
     method: 'POST',
+    cache: 'no-store',
     headers: {
       Authorization: `bearer ${GITHUB_TOKEN}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      query: `query($login: String!) { user(login: $login) { createdAt } }`,
+      query: `query($login: String!) { # ${Math.random()}\n user(login: $login) { createdAt } }`,
       variables: { login: username },
     }),
   });
@@ -42,7 +45,7 @@ async function fetchAllTimeContributions(username: string) {
   }
 
   const fullQuery = `
-    query($login: String!) {
+    query($login: String!) { # cache-buster: ${Math.random()}
       user(login: $login) {
         ${queryParts.join('\n')}
       }
@@ -51,6 +54,7 @@ async function fetchAllTimeContributions(username: string) {
 
   const response = await fetch('https://api.github.com/graphql', {
     method: 'POST',
+    cache: 'no-store',
     headers: {
       Authorization: `bearer ${GITHUB_TOKEN}`,
       'Content-Type': 'application/json',
@@ -71,7 +75,15 @@ async function fetchAllTimeContributions(username: string) {
     allDays.push(...days);
   }
 
-  return { allDays, allTotal, createdAt };
+  // Deduplicate allDays because GitHub returns overlapping days at year boundaries
+  const uniqueDaysMap = new Map();
+  for (const day of allDays) {
+    uniqueDaysMap.set(day.date, day);
+  }
+  const uniqueDays = Array.from(uniqueDaysMap.values());
+  uniqueDays.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  return { allDays: uniqueDays, allTotal, createdAt };
 }
 
 function calculateStreaks(allDays: any[], allTotal: number) {
@@ -93,7 +105,14 @@ function calculateStreaks(allDays: any[], allTotal: number) {
   let today = new Date().toISOString().split('T')[0];
   let todayIndex = allDays.findIndex((d: any) => d.date === today);
   
+  console.log('DEBUG:', { today, todayIndex, dayData: allDays[todayIndex] });
+
+  let hasCommittedToday = false;
   if (todayIndex !== -1) {
+    if (allDays[todayIndex].contributionCount > 0) {
+      hasCommittedToday = true;
+    }
+    
     let activeIndex = todayIndex;
     if (allDays[todayIndex].contributionCount === 0) {
       activeIndex = todayIndex - 1;
@@ -105,7 +124,7 @@ function calculateStreaks(allDays: any[], allTotal: number) {
     }
   }
 
-  return { totalContributions: allTotal, currentStreak, longestStreak };
+  return { totalContributions: allTotal, currentStreak, longestStreak, hasCommittedToday };
 }
 
 function generateSvg(stats: any, username: string, allDays: any[], createdAt: Date) {
@@ -249,6 +268,7 @@ function generateSvg(stats: any, username: string, allDays: any[], createdAt: Da
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const username = searchParams.get('user');
+  const format = searchParams.get('format') || 'svg';
 
   if (!username) {
     return new NextResponse('Missing user parameter', { status: 400 });
@@ -257,6 +277,19 @@ export async function GET(request: Request) {
   try {
     const { allDays, allTotal, createdAt } = await fetchAllTimeContributions(username);
     const stats = calculateStreaks(allDays, allTotal);
+
+    if (format === 'json') {
+      return NextResponse.json({
+        username,
+        stats,
+        accountStart: createdAt
+      }, {
+        headers: {
+          'Access-Control-Allow-Origin': '*', // Allow extension to fetch this
+        }
+      });
+    }
+
     const svg = generateSvg(stats, username, allDays, createdAt);
 
     return new NextResponse(svg, {

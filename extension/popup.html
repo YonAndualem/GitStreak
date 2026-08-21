@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitStreak Tracker</title>
+    <link rel="stylesheet" href="popup.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&family=Rajdhani:wght@500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="setup-screen" class="screen">
+        <h2 class="title">GitStreak Tracker</h2>
+        <input type="text" id="username-input" placeholder="GitHub Username" />
+        <button id="save-btn">Start Tracking</button>
+    </div>
+
+    <div id="stats-screen" class="screen hidden">
+        <div id="loading" class="loading">Generating stats...</div>
+        <img id="streak-img" class="hidden" src="" alt="GitHub Streak Stats" />
+        <div class="footer">
+            <button id="settings-btn" class="text-btn">Change User</button>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
