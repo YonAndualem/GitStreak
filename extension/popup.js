@@ -154,7 +154,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 banner.style.background = 'transparent';
                 banner.style.border = 'none';
                 banner.style.color = '#da3633';
-                banner.textContent = '🔥 Your streak is at risk! You haven\'t pushed any code today.';
+                
+                if (store.streakActive) {
+                    const updateTimer = () => {
+                        const now = new Date();
+                        const midnight = new Date();
+                        midnight.setHours(23, 59, 59, 999);
+                        const diff = midnight - now;
+                        const hours = Math.floor(diff / (1000 * 60 * 60));
+                        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                        banner.textContent = `Your streak is at risk! You haven't pushed any code today. (Burns up in ${hours}h ${mins}m)`;
+                    };
+                    updateTimer();
+                    setInterval(updateTimer, 60000); // Update every minute
+                } else {
+                    banner.textContent = 'You haven\'t pushed any code today. Commit now to start a new streak!';
+                }
             } else {
                 banner.style.background = 'transparent';
                 banner.style.border = 'none';
