@@ -25,7 +25,7 @@ async function updateBadge() {
         }
 
         try {
-            const res = await fetch(`http://localhost:3000/api/streak?user=${result.githubUsername}&format=json`);
+            const res = await fetch(`https://git-streak-phi.vercel.app/api/streak?user=${result.githubUsername}&format=json`);
             if (!res.ok) return;
             
             const data = await res.json();

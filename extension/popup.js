@@ -9,8 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const heatmapGrid = document.getElementById('heatmap-grid');
     const loading = document.getElementById('loading');
 
-    // API URL - assuming the Next.js app is running locally for now
-    const API_BASE = 'http://localhost:3000/api/streak';
+    // API URL - live production
+    const API_BASE = 'https://git-streak-phi.vercel.app/api/streak';
 
     // Check if user is already saved
     chrome.storage.local.get(['githubUsername'], (result) => {
@@ -162,8 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const copyBtn = document.getElementById('copy-btn');
         copyBtn.onclick = () => {
-            // Usually the extension is meant for the live deployment. Assuming localhost for now since user is testing locally.
-            const url = `http://localhost:3000/api/streak?user=${username}`;
+            const url = `https://git-streak-phi.vercel.app/api/streak?user=${username}`;
             const markdown = `[![GitHub Streak](${url})](${url})`;
             navigator.clipboard.writeText(markdown).then(() => {
                 const old = copyBtn.textContent;
