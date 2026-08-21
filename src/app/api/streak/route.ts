@@ -290,11 +290,13 @@ export async function GET(request: Request) {
     const stats = calculateStreaks(allDays, allTotal);
 
     if (format === 'json') {
+      const last365 = allDays.slice(-365);
+      
       return NextResponse.json({
         username,
         stats,
         accountStart: createdAt,
-        allDays
+        heatmapDays: last365
       }, {
         headers: {
           'Access-Control-Allow-Origin': '*', // Allow extension to fetch this

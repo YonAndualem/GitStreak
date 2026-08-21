@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const settingsBtn = document.getElementById('settings-btn');
     const streakImg = document.getElementById('streak-img');
     const heatmapContainer = document.getElementById('heatmap-container');
-    const heatmapImg = document.getElementById('heatmap-img');
+    const heatmapGrid = document.getElementById('heatmap-grid');
     const loading = document.getElementById('loading');
 
     // API URL - assuming the Next.js app is running locally for now
@@ -58,8 +58,6 @@ document.addEventListener('DOMContentLoaded', () => {
         streakImg.title = "Click to toggle your contribution heatmap!";
         streakImg.onclick = () => {
             if (heatmapContainer.classList.contains('hidden')) {
-                // Use a standard GitHub green theme for the heatmap
-                heatmapImg.src = `https://ghchart.rshah.org/39d353/${username}`;
                 heatmapContainer.classList.remove('hidden');
             } else {
                 heatmapContainer.classList.add('hidden');
@@ -124,5 +122,30 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         
         preloadImg.src = freshUrl;
+
+        // Fetch JSON data to build the native heatmap
+        const jsonUrl = `${API_BASE}?user=${username}&format=json&t=${ts}`;
+        fetch(jsonUrl)
+            .then(res => res.json())
+            .then(data => {
+                if (data.heatmapDays) {
+                    heatmapGrid.innerHTML = '';
+                    data.heatmapDays.forEach(day => {
+                        const cell = document.createElement('div');
+                        cell.className = 'heatmap-day';
+                        cell.title = `${day.contributionCount} contributions on ${day.date}`;
+                        
+                        let level = 0;
+                        if (day.contributionCount > 0) level = 1;
+                        if (day.contributionCount > 3) level = 2;
+                        if (day.contributionCount > 6) level = 3;
+                        if (day.contributionCount > 10) level = 4;
+                        
+                        cell.classList.add(`level-${level}`);
+                        heatmapGrid.appendChild(cell);
+                    });
+                }
+            })
+            .catch(err => console.error('Failed to fetch JSON data for heatmap', err));
     }
 });
