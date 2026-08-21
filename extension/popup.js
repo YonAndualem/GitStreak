@@ -25,6 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const username = usernameInput.value.trim();
         if (!username) return;
 
+        const errorDiv = document.getElementById('login-error');
+        errorDiv.classList.add('hidden');
+
         const originalText = saveBtn.textContent;
         saveBtn.textContent = 'Checking...';
         saveBtn.disabled = true;
@@ -54,8 +57,14 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             saveBtn.textContent = originalText;
             saveBtn.disabled = false;
-            // You can use a custom error div in HTML, but alert is easiest for a quick catch
-            alert('User not found. Please verify the GitHub username.');
+            errorDiv.textContent = 'User not found. Please verify the GitHub username.';
+            errorDiv.classList.remove('hidden');
+        }
+    });
+
+    usernameInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            saveBtn.click();
         }
     });
 
@@ -68,6 +77,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'streakActive',
             'lastNotificationDate'
         ], () => {
+            usernameInput.value = '';
+            document.getElementById('login-error').classList.add('hidden');
             showSetupScreen();
         });
     });
