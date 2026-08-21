@@ -5,6 +5,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveBtn = document.getElementById('save-btn');
     const settingsBtn = document.getElementById('settings-btn');
     const streakImg = document.getElementById('streak-img');
+    const heatmapContainer = document.getElementById('heatmap-container');
+    const heatmapImg = document.getElementById('heatmap-img');
     const loading = document.getElementById('loading');
 
     // API URL - assuming the Next.js app is running locally for now
@@ -51,6 +53,19 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (hour >= 12 && hour < 17) greeting = 'Good afternoon';
         greetingHeader.textContent = `${greeting}, ${username}!`;
         
+        // Heatmap toggle logic
+        streakImg.style.cursor = 'pointer';
+        streakImg.title = "Click to toggle your contribution heatmap!";
+        streakImg.onclick = () => {
+            if (heatmapContainer.classList.contains('hidden')) {
+                // Use a standard GitHub green theme for the heatmap
+                heatmapImg.src = `https://ghchart.rshah.org/39d353/${username}`;
+                heatmapContainer.classList.remove('hidden');
+            } else {
+                heatmapContainer.classList.add('hidden');
+            }
+        };
+        
         // 1. Try to load cached SVG immediately
         chrome.storage.local.get(['cachedSvgUrl'], (result) => {
             if (result.cachedSvgUrl) {
@@ -61,6 +76,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 loading.textContent = 'Generating stats...';
                 loading.classList.remove('hidden');
                 streakImg.classList.add('hidden');
+            }
+        });
+        
+        // Show warning banner if needed
+        chrome.storage.local.get(['hasCommittedToday', 'streakActive'], (store) => {
+            const banner = document.getElementById('action-banner');
+            if (store.streakActive && store.hasCommittedToday === false) {
+                banner.classList.remove('hidden');
+            } else {
+                banner.classList.add('hidden');
             }
         });
         
