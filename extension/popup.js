@@ -160,6 +160,18 @@ document.addEventListener('DOMContentLoaded', () => {
             window.bannerInterval = setInterval(updateTimer, 60000);
         };
 
+        const copyBtn = document.getElementById('copy-btn');
+        copyBtn.onclick = () => {
+            // Usually the extension is meant for the live deployment. Assuming localhost for now since user is testing locally.
+            const url = `http://localhost:3000/api/streak?user=${username}`;
+            const markdown = `[![GitHub Streak](${url})](${url})`;
+            navigator.clipboard.writeText(markdown).then(() => {
+                const old = copyBtn.textContent;
+                copyBtn.textContent = '✅ Copied!';
+                setTimeout(() => copyBtn.textContent = old, 2000);
+            });
+        };
+
         // 1. Check Cache First
         chrome.storage.local.get(['cachedSvgUrl', 'cachedHeatmapDays', 'hasCommittedToday', 'streakActive'], (result) => {
             if (result.cachedSvgUrl && result.cachedHeatmapDays) {
@@ -167,6 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 streakImg.src = result.cachedSvgUrl;
                 loading.classList.add('hidden');
                 streakImg.classList.remove('hidden');
+                copyBtn.classList.remove('hidden');
                 heatmapContainer.classList.remove('hidden');
                 renderHeatmap(result.cachedHeatmapDays);
                 setupBanner(result);
@@ -175,6 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 loading.innerHTML = '<div class="spinner"></div>';
                 loading.classList.remove('hidden');
                 streakImg.classList.add('hidden');
+                copyBtn.classList.add('hidden');
                 heatmapContainer.classList.add('hidden');
                 document.getElementById('status-banner').classList.add('hidden');
             }
@@ -190,6 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
             streakImg.src = preloadImg.src;
             loading.classList.add('hidden');
             streakImg.classList.remove('hidden');
+            copyBtn.classList.remove('hidden');
             heatmapContainer.classList.remove('hidden');
             
             // Re-render latest data from storage
@@ -245,6 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     loading.textContent = 'User not found. Please click Logout and try again.';
                     loading.classList.remove('hidden');
                     streakImg.classList.add('hidden');
+                    copyBtn.classList.add('hidden');
                     document.getElementById('status-banner').classList.add('hidden');
                     heatmapContainer.classList.add('hidden');
                 }
