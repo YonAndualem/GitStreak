@@ -15,38 +15,8 @@
     </div>
 
     <div id="stats-screen" class="screen hidden">
-        <div id="loading" class="loading">Loading live stats...</div>
-        
-        <div id="streak-card" class="hidden">
-            <div class="col">
-                <div class="stat-header">Total Contributions</div>
-                <div class="stat-value" id="total-contributions">0</div>
-                <div class="stat-dates" id="total-dates"></div>
-            </div>
-            
-            <div class="divider"></div>
-            
-            <div class="col">
-                <div class="stat-header">Current Streak</div>
-                <div class="ring-container">
-                    <svg class="ring" width="84" height="84">
-                        <circle class="ring-bg" cx="42" cy="42" r="40" />
-                        <circle class="ring-progress" cx="42" cy="42" r="40" id="current-ring" />
-                    </svg>
-                    <div class="stat-value" id="current-streak">0</div>
-                </div>
-                <div class="stat-dates" id="current-dates"></div>
-            </div>
-            
-            <div class="divider"></div>
-            
-            <div class="col">
-                <div class="stat-header">Longest Streak</div>
-                <div class="stat-value" id="longest-streak">0</div>
-                <div class="stat-dates" id="longest-dates"></div>
-            </div>
-        </div>
-
+        <div id="loading" class="loading">Generating stats...</div>
+        <img id="streak-img" class="hidden" src="" alt="GitHub Streak Stats" />
         <div class="footer">
             <button id="settings-btn" class="text-btn">Change User</button>
         </div>

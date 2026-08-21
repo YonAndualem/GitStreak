@@ -293,7 +293,8 @@ export async function GET(request: Request) {
       return NextResponse.json({
         username,
         stats,
-        accountStart: createdAt
+        accountStart: createdAt,
+        allDays
       }, {
         headers: {
           'Access-Control-Allow-Origin': '*', // Allow extension to fetch this
