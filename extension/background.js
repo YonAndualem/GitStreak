@@ -47,6 +47,25 @@ async function updateBadge() {
                 streakActive: data.stats.currentStreak > 0,
                 hasCommittedToday: hasCommittedToday 
             });
+            
+            // Desktop Notification Logic (Check if it's past 8 PM (20:00) and no commit today)
+            const hour = new Date().getHours();
+            const todayStr = new Date().toISOString().split('T')[0];
+            
+            if (!hasCommittedToday && data.stats.currentStreak > 0 && hour >= 20) {
+                chrome.storage.local.get(['lastNotificationDate'], (store) => {
+                    if (store.lastNotificationDate !== todayStr) {
+                        chrome.notifications.create('commitReminder', {
+                            type: 'basic',
+                            iconUrl: 'icons/icon128.png',
+                            title: 'GitStreak Reminder 🔥',
+                            message: `Your ${streak}-day streak is at risk! You haven't pushed any code today.`,
+                            priority: 2
+                        });
+                        chrome.storage.local.set({ lastNotificationDate: todayStr });
+                    }
+                });
+            }
 
         } catch (error) {
             console.error('Background badge update failed:', error);
