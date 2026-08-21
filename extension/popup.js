@@ -53,16 +53,8 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (hour >= 12 && hour < 17) greeting = 'Good afternoon';
         greetingHeader.textContent = `${greeting}, ${username}!`;
         
-        // Heatmap toggle logic
-        streakImg.style.cursor = 'pointer';
-        streakImg.title = "Click to toggle your contribution heatmap!";
-        streakImg.onclick = () => {
-            if (heatmapContainer.classList.contains('hidden')) {
-                heatmapContainer.classList.remove('hidden');
-            } else {
-                heatmapContainer.classList.add('hidden');
-            }
-        };
+        // Heatmap is now always visible (sticky)
+        heatmapContainer.classList.remove('hidden');
         
         // 1. Try to load cached SVG immediately
         chrome.storage.local.get(['cachedSvgUrl'], (result) => {
@@ -130,7 +122,13 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(data => {
                 if (data.heatmapDays) {
                     heatmapGrid.innerHTML = '';
-                    data.heatmapDays.forEach(day => {
+                    
+                    // Our popup is 495px wide. A 10px box + 3px gap = 13px per column.
+                    // 495 / 13 = ~38 columns. 38 columns * 7 days = 266 days.
+                    // Slice the last 266 days to prevent grid overflow and show the latest ones!
+                    const recentDays = data.heatmapDays.slice(-266);
+                    
+                    recentDays.forEach(day => {
                         const cell = document.createElement('div');
                         cell.className = 'heatmap-day';
                         cell.title = `${day.contributionCount} contributions on ${day.date}`;
