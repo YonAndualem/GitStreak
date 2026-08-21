@@ -29,8 +29,13 @@ async function fetchAllTimeContributions(username: string) {
   for (let year = startYear; year <= currentYear; year++) {
     const from = `${year}-01-01T00:00:00Z`;
     const to = `${year}-12-31T23:59:59Z`;
+    
+    // For the current year, omit from/to to force GitHub to return real-time data
+    // (GitHub heavily caches explicit year queries, causing today's commits to sometimes show as 0)
+    const collectionArgs = year === currentYear ? '' : `(from: "${from}", to: "${to}")`;
+
     queryParts.push(`
-      year${year}: contributionsCollection(from: "${from}", to: "${to}") {
+      year${year}: contributionsCollection${collectionArgs} {
         contributionCalendar {
           totalContributions
           weeks {
@@ -288,7 +293,8 @@ export async function GET(request: Request) {
       return NextResponse.json({
         username,
         stats,
-        accountStart: createdAt
+        accountStart: createdAt,
+        allDays
       }, {
         headers: {
           'Access-Control-Allow-Origin': '*', // Allow extension to fetch this
