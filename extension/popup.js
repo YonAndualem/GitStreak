@@ -92,7 +92,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setupScreen.classList.add('hidden');
         statsScreen.classList.remove('hidden');
         
-        // Setup greeting based on time of day
         const greetingHeader = document.getElementById('greeting-header');
         const hour = new Date().getHours();
         let greeting = 'Good evening';
@@ -100,10 +99,6 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (hour >= 12 && hour < 17) greeting = 'Good afternoon';
         greetingHeader.textContent = `${greeting}, ${username}!`;
         
-        // Heatmap is now always visible (sticky)
-        heatmapContainer.classList.remove('hidden');
-        
-        // Helper to render heatmap from array
         const renderHeatmap = (heatmapDays) => {
             heatmapGrid.innerHTML = '';
             const recentDays = heatmapDays.slice(-266);
@@ -111,83 +106,97 @@ document.addEventListener('DOMContentLoaded', () => {
                 const cell = document.createElement('div');
                 cell.className = 'heatmap-day';
                 cell.title = `${day.contributionCount} contributions on ${day.date}`;
-                
                 let level = 0;
                 if (day.contributionCount > 0) level = 1;
                 if (day.contributionCount > 3) level = 2;
                 if (day.contributionCount > 6) level = 3;
                 if (day.contributionCount > 10) level = 4;
-                
                 cell.classList.add(`level-${level}`);
                 heatmapGrid.appendChild(cell);
             });
         };
 
-        // 1. Try to load cached SVG and Heatmap immediately
-        chrome.storage.local.get(['cachedSvgUrl', 'cachedHeatmapDays'], (result) => {
-            if (result.cachedSvgUrl) {
+        const setupBanner = (store) => {
+            const banner = document.getElementById('status-banner');
+            if (store.hasCommittedToday === undefined) return;
+            
+            banner.style.background = 'transparent';
+            banner.style.border = 'none';
+            banner.classList.remove('hidden');
+
+            const updateTimer = () => {
+                const now = new Date();
+                const deadline = new Date();
+                
+                if (store.hasCommittedToday) {
+                    deadline.setDate(deadline.getDate() + 1); // Tomorrow midnight
+                }
+                deadline.setHours(23, 59, 59, 999);
+                
+                const diff = deadline - now;
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                
+                if (hours < 12) {
+                    banner.style.color = '#da3633';
+                    if (store.streakActive) {
+                        banner.textContent = `Your streak is at risk! (Burns up in ${hours}h ${mins}m)`;
+                    } else {
+                        banner.textContent = 'You haven\'t pushed any code today. Commit now to start a new streak!';
+                    }
+                } else {
+                    banner.style.color = '#39d353';
+                    if (store.hasCommittedToday) {
+                        banner.textContent = `You are done for today! (Next commit due in ${hours}h ${mins}m)`;
+                    } else {
+                        banner.textContent = `Your streak is currently safe for ${hours}h ${mins}m.`;
+                    }
+                }
+            };
+            
+            updateTimer();
+            // Clear any existing intervals if function runs multiple times
+            if (window.bannerInterval) clearInterval(window.bannerInterval);
+            window.bannerInterval = setInterval(updateTimer, 60000);
+        };
+
+        // 1. Check Cache First
+        chrome.storage.local.get(['cachedSvgUrl', 'cachedHeatmapDays', 'hasCommittedToday', 'streakActive'], (result) => {
+            if (result.cachedSvgUrl && result.cachedHeatmapDays) {
+                // We have cache, show EVERYTHING instantly
                 streakImg.src = result.cachedSvgUrl;
                 loading.classList.add('hidden');
                 streakImg.classList.remove('hidden');
+                heatmapContainer.classList.remove('hidden');
+                renderHeatmap(result.cachedHeatmapDays);
+                setupBanner(result);
             } else {
+                // First load. Hide everything except loading spinner.
                 loading.textContent = 'Generating stats...';
                 loading.classList.remove('hidden');
                 streakImg.classList.add('hidden');
-            }
-            if (result.cachedHeatmapDays) {
-                renderHeatmap(result.cachedHeatmapDays);
-            }
-        });
-        
-        // Show dynamic status banner
-        chrome.storage.local.get(['hasCommittedToday', 'streakActive'], (store) => {
-            const banner = document.getElementById('status-banner');
-            
-            if (store.hasCommittedToday === undefined) {
-                banner.classList.add('hidden');
-                return;
-            }
-            
-            banner.classList.remove('hidden');
-            
-            if (store.hasCommittedToday === false) {
-                banner.style.background = 'transparent';
-                banner.style.border = 'none';
-                banner.style.color = '#da3633';
-                
-                if (store.streakActive) {
-                    const updateTimer = () => {
-                        const now = new Date();
-                        const midnight = new Date();
-                        midnight.setHours(23, 59, 59, 999);
-                        const diff = midnight - now;
-                        const hours = Math.floor(diff / (1000 * 60 * 60));
-                        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                        banner.textContent = `Your streak is at risk! You haven't pushed any code today. (Burns up in ${hours}h ${mins}m)`;
-                    };
-                    updateTimer();
-                    setInterval(updateTimer, 60000); // Update every minute
-                } else {
-                    banner.textContent = 'You haven\'t pushed any code today. Commit now to start a new streak!';
-                }
-            } else {
-                banner.style.background = 'transparent';
-                banner.style.border = 'none';
-                banner.style.color = '#39d353';
-                banner.textContent = 'You are done for today! Your streak is safely growing.';
+                heatmapContainer.classList.add('hidden');
+                document.getElementById('status-banner').classList.add('hidden');
             }
         });
         
-        // 2. Fetch fresh SVG and JSON in the background
+        // 2. Fetch fresh SVG and JSON
         const ts = new Date().getTime();
         const freshUrl = `${API_BASE}?user=${username}&t=${ts}`;
         
-        // Create an invisible image to load the fresh SVG in the background
         const preloadImg = new Image();
         preloadImg.onload = () => {
+            // Once SVG loads, reveal EVERYTHING
             streakImg.src = preloadImg.src;
             loading.classList.add('hidden');
             streakImg.classList.remove('hidden');
+            heatmapContainer.classList.remove('hidden');
+            
+            // Re-render latest data from storage
+            chrome.storage.local.get(['cachedHeatmapDays', 'hasCommittedToday', 'streakActive'], (result) => {
+                if (result.cachedHeatmapDays) renderHeatmap(result.cachedHeatmapDays);
+                setupBanner(result);
+            });
             
             fetch(freshUrl)
                 .then(r => r.blob())
@@ -209,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         preloadImg.src = freshUrl;
 
-        // Fetch JSON data to build the native heatmap
+        // Fetch JSON data for heatmap and stats
         const jsonUrl = `${API_BASE}?user=${username}&format=json&t=${ts}`;
         fetch(jsonUrl)
             .then(async res => {
@@ -221,19 +230,21 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .then(data => {
                 if (data.heatmapDays) {
-                    chrome.storage.local.set({ cachedHeatmapDays: data.heatmapDays });
-                    renderHeatmap(data.heatmapDays);
+                    // Update the cache immediately so preloadImg.onload can use it!
+                    chrome.storage.local.set({ 
+                        cachedHeatmapDays: data.heatmapDays,
+                        hasCommittedToday: data.stats.hasCommittedToday,
+                        streakActive: data.stats.currentStreak > 0
+                    });
                 }
             })
             .catch(err => {
                 console.error('Failed to fetch JSON data for heatmap', err);
                 const errorStr = err.toString();
                 if (errorStr.includes('Could not resolve to a User') || errorStr.includes('Not Found')) {
-                    // Update the loading text that the image onerror also touches
                     loading.textContent = 'User not found. Please click Logout and try again.';
                     loading.classList.remove('hidden');
                     streakImg.classList.add('hidden');
-                    // Hide the banner and heatmap if they are visible
                     document.getElementById('status-banner').classList.add('hidden');
                     heatmapContainer.classList.add('hidden');
                 }
