@@ -43,6 +43,14 @@ document.addEventListener('DOMContentLoaded', () => {
         setupScreen.classList.add('hidden');
         statsScreen.classList.remove('hidden');
         
+        // Setup greeting based on time of day
+        const greetingHeader = document.getElementById('greeting-header');
+        const hour = new Date().getHours();
+        let greeting = 'Good evening';
+        if (hour >= 5 && hour < 12) greeting = 'Good morning';
+        else if (hour >= 12 && hour < 17) greeting = 'Good afternoon';
+        greetingHeader.textContent = `${greeting}, ${username}!`;
+        
         // 1. Try to load cached SVG immediately
         chrome.storage.local.get(['cachedSvgUrl'], (result) => {
             if (result.cachedSvgUrl) {
