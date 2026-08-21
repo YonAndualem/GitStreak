@@ -31,7 +31,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     settingsBtn.addEventListener('click', () => {
-        chrome.storage.local.remove(['githubUsername', 'cachedSvgUrl'], () => {
+        chrome.storage.local.remove([
+            'githubUsername', 
+            'cachedSvgUrl', 
+            'cachedHeatmapDays', 
+            'hasCommittedToday', 
+            'streakActive',
+            'lastNotificationDate'
+        ], () => {
             showSetupScreen();
         });
     });
@@ -144,13 +151,31 @@ document.addEventListener('DOMContentLoaded', () => {
         // Fetch JSON data to build the native heatmap
         const jsonUrl = `${API_BASE}?user=${username}&format=json&t=${ts}`;
         fetch(jsonUrl)
-            .then(res => res.json())
+            .then(async res => {
+                if (!res.ok) {
+                    const errText = await res.text();
+                    throw new Error(errText);
+                }
+                return res.json();
+            })
             .then(data => {
                 if (data.heatmapDays) {
                     chrome.storage.local.set({ cachedHeatmapDays: data.heatmapDays });
                     renderHeatmap(data.heatmapDays);
                 }
             })
-            .catch(err => console.error('Failed to fetch JSON data for heatmap', err));
+            .catch(err => {
+                console.error('Failed to fetch JSON data for heatmap', err);
+                const errorStr = err.toString();
+                if (errorStr.includes('Could not resolve to a User') || errorStr.includes('Not Found')) {
+                    // Update the loading text that the image onerror also touches
+                    loading.textContent = 'User not found. Please click Logout and try again.';
+                    loading.classList.remove('hidden');
+                    streakImg.classList.add('hidden');
+                    // Hide the banner and heatmap if they are visible
+                    document.getElementById('status-banner').classList.add('hidden');
+                    heatmapContainer.classList.add('hidden');
+                }
+            });
     }
 });
