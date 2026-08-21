@@ -81,9 +81,27 @@ button {
 }
 
 .loading {
-    padding: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 60px;
     color: #8b949e;
     font-size: 14px;
+}
+
+.spinner {
+    width: 30px;
+    height: 30px;
+    border: 3px solid rgba(57, 211, 83, 0.2);
+    border-top-color: #39d353;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .footer {

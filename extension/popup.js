@@ -172,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 setupBanner(result);
             } else {
                 // First load. Hide everything except loading spinner.
-                loading.textContent = 'Generating stats...';
+                loading.innerHTML = '<div class="spinner"></div>';
                 loading.classList.remove('hidden');
                 streakImg.classList.add('hidden');
                 heatmapContainer.classList.add('hidden');
