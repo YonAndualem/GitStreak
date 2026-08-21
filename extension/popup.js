@@ -56,8 +56,28 @@ document.addEventListener('DOMContentLoaded', () => {
         // Heatmap is now always visible (sticky)
         heatmapContainer.classList.remove('hidden');
         
-        // 1. Try to load cached SVG immediately
-        chrome.storage.local.get(['cachedSvgUrl'], (result) => {
+        // Helper to render heatmap from array
+        const renderHeatmap = (heatmapDays) => {
+            heatmapGrid.innerHTML = '';
+            const recentDays = heatmapDays.slice(-266);
+            recentDays.forEach(day => {
+                const cell = document.createElement('div');
+                cell.className = 'heatmap-day';
+                cell.title = `${day.contributionCount} contributions on ${day.date}`;
+                
+                let level = 0;
+                if (day.contributionCount > 0) level = 1;
+                if (day.contributionCount > 3) level = 2;
+                if (day.contributionCount > 6) level = 3;
+                if (day.contributionCount > 10) level = 4;
+                
+                cell.classList.add(`level-${level}`);
+                heatmapGrid.appendChild(cell);
+            });
+        };
+
+        // 1. Try to load cached SVG and Heatmap immediately
+        chrome.storage.local.get(['cachedSvgUrl', 'cachedHeatmapDays'], (result) => {
             if (result.cachedSvgUrl) {
                 streakImg.src = result.cachedSvgUrl;
                 loading.classList.add('hidden');
@@ -66,6 +86,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 loading.textContent = 'Generating stats...';
                 loading.classList.remove('hidden');
                 streakImg.classList.add('hidden');
+            }
+            if (result.cachedHeatmapDays) {
+                renderHeatmap(result.cachedHeatmapDays);
             }
         });
         
@@ -83,26 +106,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 banner.style.background = 'transparent';
                 banner.style.border = 'none';
                 banner.style.color = '#39d353';
-                banner.textContent = '✅ You are done for today! Your streak is safely growing.';
+                banner.textContent = 'You are done for today! Your streak is safely growing.';
             }
         });
         
-        // 2. Fetch fresh SVG in the background
+        // 2. Fetch fresh SVG and JSON in the background
         const ts = new Date().getTime();
         const freshUrl = `${API_BASE}?user=${username}&t=${ts}`;
         
         // Create an invisible image to load the fresh SVG in the background
         const preloadImg = new Image();
         preloadImg.onload = () => {
-            // Once fully loaded, swap it into the UI
             streakImg.src = preloadImg.src;
             loading.classList.add('hidden');
             streakImg.classList.remove('hidden');
             
-            // Save the URL to cache for next time
-            // We use the same freshUrl but convert it to a data URI to cache it perfectly,
-            // or we just save the freshUrl (but Chrome will have it in browser cache).
-            // Actually, we can fetch it as text to save the exact SVG string, but saving the data URL is easiest.
             fetch(freshUrl)
                 .then(r => r.blob())
                 .then(blob => {
@@ -129,27 +147,8 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(res => res.json())
             .then(data => {
                 if (data.heatmapDays) {
-                    heatmapGrid.innerHTML = '';
-                    
-                    // Our popup is 495px wide. A 10px box + 3px gap = 13px per column.
-                    // 495 / 13 = ~38 columns. 38 columns * 7 days = 266 days.
-                    // Slice the last 266 days to prevent grid overflow and show the latest ones!
-                    const recentDays = data.heatmapDays.slice(-266);
-                    
-                    recentDays.forEach(day => {
-                        const cell = document.createElement('div');
-                        cell.className = 'heatmap-day';
-                        cell.title = `${day.contributionCount} contributions on ${day.date}`;
-                        
-                        let level = 0;
-                        if (day.contributionCount > 0) level = 1;
-                        if (day.contributionCount > 3) level = 2;
-                        if (day.contributionCount > 6) level = 3;
-                        if (day.contributionCount > 10) level = 4;
-                        
-                        cell.classList.add(`level-${level}`);
-                        heatmapGrid.appendChild(cell);
-                    });
+                    chrome.storage.local.set({ cachedHeatmapDays: data.heatmapDays });
+                    renderHeatmap(data.heatmapDays);
                 }
             })
             .catch(err => console.error('Failed to fetch JSON data for heatmap', err));

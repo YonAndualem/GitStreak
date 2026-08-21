@@ -73,15 +73,37 @@ button {
     cursor: pointer;
 }
 
-.text-btn {
-    background: transparent;
+.greeting {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 5px 0 5px 0;
+    align-self: center;
+}
+
+.loading {
+    padding: 40px;
     color: #8b949e;
-    font-size: 12px;
-    margin-top: 5px;
+    font-size: 14px;
+}
+
+.footer {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    padding: 10px 0;
+}
+
+.text-btn {
+    background: none;
+    border: none;
+    color: #da3633;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
 }
 
 .text-btn:hover {
-    color: white;
+    color: #ff8888;
 }
 
 img#streak-img {
@@ -90,15 +112,4 @@ img#streak-img {
     border-radius: 4.5px;
 }
 
-.greeting {
-    font-size: 18px;
-    font-weight: 600;
-    margin: 5px 0 5px 0;
-    align-self: flex-start;
-    padding-left: 5px;
-}
 
-.loading {
-    padding: 40px;
-    color: #8b949e;
-}
