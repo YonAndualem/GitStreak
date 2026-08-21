@@ -21,12 +21,41 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    saveBtn.addEventListener('click', () => {
+    saveBtn.addEventListener('click', async () => {
         const username = usernameInput.value.trim();
-        if (username) {
-            chrome.storage.local.set({ githubUsername: username }, () => {
+        if (!username) return;
+
+        const originalText = saveBtn.textContent;
+        saveBtn.textContent = 'Checking...';
+        saveBtn.disabled = true;
+
+        try {
+            const ts = new Date().getTime();
+            const res = await fetch(`${API_BASE}?user=${username}&format=json&t=${ts}`);
+            
+            if (!res.ok) {
+                throw new Error('User not found');
+            }
+            
+            const data = await res.json();
+            
+            // Save the verified user and their initial stats cache immediately!
+            chrome.storage.local.set({ 
+                githubUsername: username,
+                cachedHeatmapDays: data.heatmapDays,
+                hasCommittedToday: data.stats.hasCommittedToday,
+                streakActive: data.stats.currentStreak > 0
+            }, () => {
+                saveBtn.textContent = originalText;
+                saveBtn.disabled = false;
                 showStatsScreen(username);
             });
+
+        } catch (error) {
+            saveBtn.textContent = originalText;
+            saveBtn.disabled = false;
+            // You can use a custom error div in HTML, but alert is easiest for a quick catch
+            alert('User not found. Please verify the GitHub username.');
         }
     });
 
@@ -102,6 +131,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show dynamic status banner
         chrome.storage.local.get(['hasCommittedToday', 'streakActive'], (store) => {
             const banner = document.getElementById('status-banner');
+            
+            if (store.hasCommittedToday === undefined) {
+                banner.classList.add('hidden');
+                return;
+            }
+            
             banner.classList.remove('hidden');
             
             if (store.hasCommittedToday === false) {
